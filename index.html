@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI YouTube Transcriber</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.7.7/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.0.18/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.10/clipboard.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/toastify-js@1.12.0/src/toastify.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .url-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        .action-btn {
+            background: #007bff;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .action-btn:hover {
+            background: #0056b3;
+        }
+        .action-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+        .action-btn.copied {
+            background: #28a745;
+        }
+        .transcription-card {
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        .transcription-content, .overview-content {
+            white-space: pre-wrap;
+            min-height: 100px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color: #555;
+        }
+        .collapsible {
+            cursor: pointer;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 6px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: none;
+            width: 100%;
+            text-align: left;
+            font-size: 16px;
+        }
+        .collapsible[aria-expanded="true"]::after {
+            content: '▲';
+        }
+        .collapsible[aria-expanded="false"]::after {
+            content: '▼';
+        }
+        .collapsible-content {
+            display: none;
+            padding: 15px;
+            background: #f1f3f5;
+            border-radius: 6px;
+        }
+        .collapsible-content.active {
+            display: block;
+        }
+        .settings-section {
+            margin: 10px 0;
+        }
+        .settings-section select, .settings-section input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        .welcome-message {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .action-buttons ul {
+            list-style: none;
+            padding: 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        h1 {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 role="heading" aria-level="1">AI YouTube Transcriber</h1>
+        <div role="region" aria-labelledby="settings-heading">
+            <button class="collapsible" id="settings-heading" aria-expanded="false" aria-controls="settings-content" role="button">Settings</button>
+            <div id="settings-content" class="collapsible-content" role="region" aria-labelledby="settings-heading">
+                <div class="settings-section">
+                    <label for="modelSelect">Select AI Model:</label>
+                    <select id="modelSelect">
+                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                        <option value="gemini-2.5-pro" selected>Gemini 2.5 Pro</option>
+                    </select>
+                    <label for="transcriptionLang">Select Transcription Language for Text-to-Speech:</label>
+                    <select id="transcriptionLang">
+                        <option value="Afrikaans">Afrikaans</option>
+                        <option value="Albanian">Albanian</option>
+                        <option value="Amharic">Amharic</option>
+                        <option value="Arabic">Arabic</option>
+                        <option value="Armenian">Armenian</option>
+                        <option value="Azerbaijani">Azerbaijani</option>
+                        <option value="Basque">Basque</option>
+                        <option value="Belarusian">Belarusian</option>
+                        <option value="Bengali">Bengali</option>
+                        <option value="Bosnian">Bosnian</option>
+                        <option value="Bulgarian">Bulgarian</option>
+                        <option value="Catalan">Catalan</option>
+                        <option value="Cebuano">Cebuano</option>
+                        <option value="Chichewa">Chichewa</option>
+                        <option value="Chinese">Chinese</option>
+                        <option value="Corsican">Corsican</option>
+                        <option value="Croatian">Croatian</option>
+                        <option value="Czech">Czech</option>
+                        <option value="Danish">Danish</option>
+                        <option value="Dutch">Dutch</option>
+                        <option value="English" selected>English</option>
+                        <option value="Esperanto">Esperanto</option>
+                        <option value="Estonian">Estonian</option>
+                        <option value="Filipino">Filipino</option>
+                        <option value="Finnish">Finnish</option>
+                        <option value="French">French</option>
+                        <option value="Frisian">Frisian</option>
+                        <option value="Galician">Galician</option>
+                        <option value="Georgian">Georgian</option>
+                        <option value="German">German</option>
+                        <option value="Greek">Greek</option>
+                        <option value="Gujarati">Gujarati</option>
+                        <option value="Haitian Creole">Haitian Creole</option>
+                        <option value="Hausa">Hausa</option>
+                        <option value="Hebrew">Hebrew</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Hmong">Hmong</option>
+                        <option value="Hungarian">Hungarian</option>
+                        <option value="Icelandic">Icelandic</option>
+                        <option value="Igbo">Igbo</option>
+                        <option value="Indonesian">Indonesian</option>
+                        <option value="Irish">Irish</option>
+                        <option value="Italian">Italian</option>
+                        <option value="Japanese">Japanese</option>
+                        <option value="Javanese">Javanese</option>
+                        <option value="Kannada">Kannada</option>
+                        <option value="Kazakh">Kazakh</option>
+                        <option value="Khmer">Khmer</option>
+                        <option value="Korean">Korean</option>
+                        <option value="Kurdish">Kurdish</option>
+                        <option value="Kyrgyz">Kyrgyz</option>
+                        <option value="Lao">Lao</option>
+                        <option value="Latin">Latin</option>
+                        <option value="Latvian">Latvian</option>
+                        <option value="Lithuanian">Lithuanian</option>
+                        <option value="Luxembourgish">Luxembourgish</option>
+                        <option value="Macedonian">Macedonian</option>
+                        <option value="Malagasy">Malagasy</option>
+                        <option value="Malay">Malay</option>
+                        <option value="Malayalam">Malayalam</option>
+                        <option value="Maltese">Maltese</option>
+                        <option value="Maori">Maori</option>
+                        <option value="Marathi">Marathi</option>
+                        <option value="Mongolian">Mongolian</option>
+                        <option value="Myanmar">Myanmar</option>
+                        <option value="Nepali">Nepali</option>
+                        <option value="Norwegian">Norwegian</option>
+                        <option value="Odia">Odia</option>
+                        <option value="Pashto">Pashto</option>
+                        <option value="Persian">Persian</option>
+                        <option value="Polish">Polish</option>
+                        <option value="Portuguese">Portuguese</option>
+                        <option value="Punjabi">Punjabi</option>
+                        <option value="Romanian">Romanian</option>
+                        <option value="Russian">Russian</option>
+                        <option value="Samoan">Samoan</option>
+                        <option value="Scots Gaelic">Scots Gaelic</option>
+                        <option value="Serbian">Serbian</option>
+                        <option value="Sesotho">Sesotho</option>
+                        <option value="Shona">Shona</option>
+                        <option value="Sindhi">Sindhi</option>
+                        <option value="Sinhala">Sinhala</option>
+                        <option value="Slovak">Slovak</option>
+                        <option value="Slovenian">Slovenian</option>
+                        <option value="Somali">Somali</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="Sundanese">Sundanese</option>
+                        <option value="Swahili">Swahili</option>
+                        <option value="Swedish">Swedish</option>
+                        <option value="Tajik">Tajik</option>
+                        <option value="Tamil">Tamil</option>
+                        <option value="Telugu">Telugu</option>
+                        <option value="Thai">Thai</option>
+                        <option value="Turkish">Turkish</option>
+                        <option value="Ukrainian">Ukrainian</option>
+                        <option value="Urdu">Urdu</option>
+                        <option value="Uzbek">Uzbek</option>
+                        <option value="Vietnamese">Vietnamese</option>
+                        <option value="Welsh">Welsh</option>
+                        <option value="Xhosa">Xhosa</option>
+                        <option value="Yiddish">Yiddish</option>
+                        <option value="Yoruba">Yoruba</option>
+                        <option value="Zulu">Zulu</option>
+                    </select>
+                    <label for="userName">Enter Your Name:</label>
+                    <input type="text" id="userName" placeholder="Your Name">
+                    <div class="control-buttons">
+                        <button class="action-btn" onclick="saveSettings()">Save</button>
+                        <button class="action-btn" onclick="cancelSettings()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="welcomeMessage" class="welcome-message">
+            Welcome to the AI YouTube Transcriber! Enter a YouTube video link to get a detailed transcription and overview.
+        </div>
+        <section class="control-buttons">
+            <input type="text" id="youtubeUrl" class="url-input" placeholder="Enter YouTube video URL (e.g., https://www.youtube.com/watch?v=...)">
+            <button id="transcribeBtn" class="action-btn">Transcribe Video</button>
+        </section>
+        <div id="loading" class="loading"></div>
+        <div id="transcriptions"></div>
+    </div>
+
+    <script>
+        // Audio Playback Manager
+        class AudioManager {
+            constructor() {
+                this.players = new Map();
+            }
+
+            async createSpeech(text, lang = 'en', buttonId) {
+                if (!text || !buttonId) return;
+
+                const existingPlayer = this.players.get(buttonId);
+                if (existingPlayer) {
+                    this.togglePlayPause(buttonId);
+                    return;
+                }
+
+                const button = document.getElementById(buttonId);
+                if (!button) return;
+
+                button.textContent = 'Loading...';
+                button.disabled = true;
+
+                try {
+                    const audio = new Audio(`https://www.techassistantforblind.com/modules/gtts.php?text=${encodeURIComponent(text)}&lang=${lang}`);
+                    audio.addEventListener('ended', () => {
+                        button.textContent = 'Replay';
+                        button.disabled = false;
+                        this.players.delete(buttonId);
+                    });
+                    audio.addEventListener('error', (error) => {
+                        console.error('Audio playback error:', error);
+                        button.textContent = 'Retry';
+                        button.disabled = false;
+                        this.players.delete(buttonId);
+                        showToast('Failed to load audio.', 'error');
+                    });
+
+                    this.players.set(buttonId, { button, audio, isPlaying: false });
+                    this.playAudio(buttonId);
+                    button.textContent = 'Pause';
+                    button.disabled = false;
+                } catch (error) {
+                    console.error('Audio creation error:', error);
+                    button.textContent = 'Retry';
+                    button.disabled = false;
+                    showToast('Failed to load audio.', 'error');
+                }
+            }
+
+            playNotificationSound(soundUrl, buttonId) {
+                const existingPlayer = this.players.get(buttonId);
+                if (existingPlayer && existingPlayer.isPlaying) {
+                    this.togglePlayPause(buttonId);
+                    return;
+                }
+
+                const button = document.getElementById(buttonId);
+                if (!button) return;
+
+                const audio = new Audio(soundUrl);
+                audio.addEventListener('ended', () => {
+                    button.textContent = 'Replay';
+                    button.disabled = false;
+                    this.players.delete(buttonId);
+                });
+                audio.addEventListener('error', (error) => {
+                    console.error('Notification sound error:', error);
+                    button.textContent = 'Retry';
+                    button.disabled = false;
+                    this.players.delete(buttonId);
+                    showToast('Failed to play notification sound.', 'error');
+                });
+
+                this.players.set(buttonId, { button, audio, isPlaying: true });
+                this.playAudio(buttonId);
+                button.textContent = 'Pause';
+                button.disabled = false;
+            }
+
+            playAudio(buttonId) {
+                const player = this.players.get(buttonId);
+                if (!player || player.isPlaying) return;
+
+                player.audio.play().then(() => {
+                    player.isPlaying = true;
+                    player.button.textContent = 'Pause';
+                }).catch(error => {
+                    console.error('Play error:', error);
+                    player.button.textContent = 'Retry';
+                    player.button.disabled = false;
+                    this.players.delete(buttonId);
+                    showToast('Failed to play audio.', 'error');
+                });
+            }
+
+            togglePlayPause(buttonId) {
+                const player = this.players.get(buttonId);
+                if (!player) return;
+
+                if (player.isPlaying) {
+                    player.audio.pause();
+                    player.button.textContent = 'Play';
+                    player.isPlaying = false;
+                } else {
+                    this.playAudio(buttonId);
+                }
+            }
+
+            stopAll() {
+                this.players.forEach((player, buttonId) => {
+                    if (player.isPlaying) {
+                        player.audio.pause();
+                        player.button.textContent = 'Play';
+                        player.isPlaying = false;
+                    }
+                });
+            }
+        }
+
+        // Configuration
+        const API_KEY_FOR_PROMODELS = 'AIzaSyC2Fsjk3yCRA8hDVYgg5LlMn4sxwoJJaWU';
+        let selectedModel = 'gemini-2.5-pro';
+        let selectedLang = 'English';
+        let userName = '';
+        let transcriptionCounter = 0;
+        const audioManager = new AudioManager();
+        const toastPlayerId = 'toast-player';
+        const transcribingPlayerId = 'transcribing-player';
+
+        // Language code mapping for text-to-speech
+        const languageCodeMap = {
+            'Afrikaans': 'af', 'Albanian': 'sq', 'Amharic': 'am', 'Arabic': 'ar', 'Armenian': 'hy',
+            'Azerbaijani': 'az', 'Basque': 'eu', 'Belarusian': 'be', 'Bengali': 'bn', 'Bosnian': 'bs',
+            'Bulgarian': 'bg', 'Catalan': 'ca', 'Cebuano': 'ceb', 'Chichewa': 'ny', 'Chinese': 'zh',
+            'Corsican': 'co', 'Croatian': 'hr', 'Czech': 'cs', 'Danish': 'da', 'Dutch': 'nl',
+            'English': 'en', 'Esperanto': 'eo', 'Estonian': 'et', 'Filipino': 'tl', 'Finnish': 'fi',
+            'French': 'fr', 'Frisian': 'fy', 'Galician': 'gl', 'Georgian': 'ka', 'German': 'de',
+            'Greek': 'el', 'Gujarati': 'gu', 'Haitian Creole': 'ht', 'Hausa': 'ha', 'Hebrew': 'he',
+            'Hindi': 'hi', 'Hmong': 'hmn', 'Hungarian': 'hu', 'Icelandic': 'is', 'Igbo': 'ig',
+            'Indonesian': 'id', 'Irish': 'ga', 'Italian': 'it', 'Japanese': 'ja', 'Javanese': 'jv',
+            'Kannada': 'kn', 'Kazakh': 'kk', 'Khmer': 'km', 'Korean': 'ko', 'Kurdish': 'ku',
+            'Kyrgyz': 'ky', 'Lao': 'lo', 'Latin': 'la', 'Latvian': 'lv', 'Lithuanian': 'lt',
+            'Luxembourgish': 'lb', 'Macedonian': 'mk', 'Malagasy': 'mg', 'Malay': 'ms', 'Malayalam': 'ml',
+            'Maltese': 'mt', 'Maori': 'mi', 'Marathi': 'mr', 'Mongolian': 'mn', 'Myanmar': 'my',
+            'Nepali': 'ne', 'Norwegian': 'no', 'Odia': 'or', 'Pashto': 'ps', 'Persian': 'fa',
+            'Polish': 'pl', 'Portuguese': 'pt', 'Punjabi': 'pa', 'Romanian': 'ro', 'Russian': 'ru',
+            'Samoan': 'sm', 'Scots Gaelic': 'gd', 'Serbian': 'sr', 'Sesotho': 'st', 'Shona': 'sn',
+            'Sindhi': 'sd', 'Sinhala': 'si', 'Slovak': 'sk', 'Slovenian': 'sl', 'Somali': 'so',
+            'Spanish': 'es', 'Sundanese': 'su', 'Swahili': 'sw', 'Swedish': 'sv', 'Tajik': 'tg',
+            'Tamil': 'ta', 'Telugu': 'te', 'Thai': 'th', 'Turkish': 'tr', 'Ukrainian': 'uk',
+            'Urdu': 'ur', 'Uzbek': 'uz', 'Vietnamese': 'vi', 'Welsh': 'cy', 'Xhosa': 'xh',
+            'Yiddish': 'yi', 'Yoruba': 'yo', 'Zulu': 'zu'
+        };
+
+        // DOM Elements
+        const DOM = {
+            youtubeUrl: document.getElementById('youtubeUrl'),
+            transcribeBtn: document.getElementById('transcribeBtn'),
+            transcriptionsDiv: document.getElementById('transcriptions'),
+            loadingDiv: document.getElementById('loading'),
+            modelSelect: document.getElementById('modelSelect'),
+            transcriptionLang: document.getElementById('transcriptionLang'),
+            userNameInput: document.getElementById('userName'),
+            settingsHeading: document.getElementById('settings-heading'),
+            settingsContent: document.getElementById('settings-content')
+        };
+
+        // Show Toast Notification
+        function showToast(message, type = 'info') {
+            const background = {
+                success: '#28a745',
+                error: '#dc3545',
+                info: '#007bff'
+            }[type];
+            audioManager.playNotificationSound('sounds/toast.mp3', toastPlayerId);
+            Toastify({
+                text: message,
+                duration: 5000,
+                close: false,
+                gravity: 'bottom',
+                position: 'center',
+                backgroundColor: background,
+                stopOnFocus: true
+            }).showToast();
+        }
+
+        // Show/Hide Loading Indicator
+        function showLoading(show, message = '') {
+            DOM.loadingDiv.textContent = message;
+            DOM.loadingDiv.style.display = show ? 'block' : 'none';
+        }
+
+        // Toggle Collapsible Content
+        function toggleCollapsible(contentId) {
+            const content = document.getElementById(contentId);
+            if (!content) {
+                console.error(`Collapsible content with ID ${contentId} not found`);
+                return;
+            }
+            const isActive = content.classList.contains('active');
+            content.classList.toggle('active', !isActive);
+            const collapsible = content.previousElementSibling;
+            if (collapsible) {
+                collapsible.setAttribute('aria-expanded', !isActive);
+            } else {
+                console.error(`Collapsible button for content ID ${contentId} not found`);
+            }
+        }
+
+        // Initialize Collapsible Listeners
+        function initializeCollapsible() {
+            document.querySelectorAll('.collapsible').forEach(btn => {
+                btn.removeEventListener('click', handleCollapsibleClick);
+                btn.addEventListener('click', handleCollapsibleClick);
+            });
+        }
+
+        function handleCollapsibleClick(event) {
+            const btn = event.currentTarget;
+            const contentId = btn.getAttribute('aria-controls');
+            if (contentId) {
+                toggleCollapsible(contentId);
+            } else {
+                console.error('No aria-controls attribute found on collapsible button');
+            }
+        }
+
+        // Load Settings
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('transcriberSettings')) || {};
+            selectedModel = settings.selectedModel || 'gemini-2.5-pro';
+            selectedLang = settings.selectedLang || 'English';
+            userName = settings.userName || '';
+
+            DOM.modelSelect.value = selectedModel;
+            DOM.transcriptionLang.value = selectedLang;
+            DOM.userNameInput.value = userName;
+
+            if (!userName) {
+                DOM.settingsContent.classList.add('active');
+                DOM.settingsHeading.setAttribute('aria-expanded', 'true');
+                showToast('Please set up your settings before proceeding.', 'error');
+            } else {
+                DOM.settingsContent.classList.remove('active');
+                DOM.settingsHeading.setAttribute('aria-expanded', 'false');
+            }
+        }
+
+        // Save Settings
+        function saveSettings() {
+            const newUserName = DOM.userNameInput.value.trim();
+            if (!newUserName) {
+                showToast('Please enter a valid name.', 'error');
+                return;
+            }
+            selectedModel = DOM.modelSelect.value;
+            selectedLang = DOM.transcriptionLang.value;
+            userName = newUserName;
+            localStorage.setItem('transcriberSettings', JSON.stringify({
+                selectedModel,
+                selectedLang,
+                userName
+            }));
+            toggleCollapsible('settings-content');
+            showToast('Settings saved successfully.', 'success');
+        }
+
+        // Cancel Settings
+        function cancelSettings() {
+            const settings = JSON.parse(localStorage.getItem('transcriberSettings')) || {};
+            DOM.modelSelect.value = settings.selectedModel || 'gemini-2.5-pro';
+            DOM.transcriptionLang.value = settings.selectedLang || 'English';
+            DOM.userNameInput.value = settings.userName || '';
+            toggleCollapsible('settings-content');
+            showToast('Settings unchanged.', 'info');
+        }
+
+        // Validate YouTube URL
+        function isValidYouTubeUrl(url) {
+            const regex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|m\.youtube\.com)\/(watch\?v=|embed\/|v\/|shorts\/|.+\?v=)?([a-zA-Z0-9_-]{11})(\?.*)?$/;
+            const isValid = regex.test(url);
+            if (!isValid) {
+                console.warn(`Invalid YouTube URL: ${url}`);
+            }
+            return isValid;
+        }
+
+        // API Request
+        async function fetchAPI(body) {
+            try {
+                const response = await axios.post(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${API_KEY_FOR_PROMODELS}`,
+                    body,
+                    { headers: { 'Content-Type': 'application/json' } }
+                );
+                return response.data;
+            } catch (error) {
+                throw new Error(error.response?.data?.error?.message || `API request failed: ${error.message}`);
+            }
+        }
+
+        // Transcribe YouTube Video
+        async function transcribeVideo() {
+            if (!userName) {
+                showToast('Please set up your settings before proceeding.', 'error');
+                DOM.settingsContent.classList.add('active');
+                DOM.settingsHeading.setAttribute('aria-expanded', 'true');
+                return;
+            }
+
+            const url = DOM.youtubeUrl.value.trim();
+            if (!url) {
+                showToast('Please enter a YouTube video URL.', 'error');
+                return;
+            }
+
+            if (!isValidYouTubeUrl(url)) {
+                showToast('Please enter a valid YouTube video URL.', 'error');
+                return;
+            }
+
+            const transcriptionId = `transcription-${transcriptionCounter++}`;
+            DOM.transcriptionsDiv.insertAdjacentHTML('afterbegin', `
+                <div class="transcription-card" id="${transcriptionId}">
+                    <p id="transcriptionresponse-${transcriptionId}" class="transcription-content loading">AI is transcribing...</p>
+                    <p id="overviewresponse-${transcriptionId}" class="overview-content loading">AI is generating overview...</p>
+                </div>
+            `);
+
+            showLoading(true, 'AI is processing your YouTube video, please wait...');
+            DOM.transcribeBtn.disabled = true;
+
+            audioManager.playNotificationSound('sounds/transcribing.mp3', transcribingPlayerId);
+
+            try {
+                const prompt = `Hey, I am ${userName}. Generate transcription and overview in the video language line by line. Generate in full markdown code. Transcribe this YouTube video with the highest analysis and accuracy. Build two sections: **Transcription** and **Overview**. In the **Transcription** section, provide all the transcribed text from the video, formatted in markdown with timestamps for each significant segment (e.g., [00:00-00:15]). Ensure the transcription is complete, accurate, and captures all spoken content, including speaker identification if multiple speakers are present. In the **Overview** section, generate a brief summary of the video’s content, highlighting the main topics, key points, and purpose. Avoid including any copyrighted content, such as direct quotes or lyrics, and focus on original descriptions.`;
+
+                const response = await fetchAPI({
+                    contents: [{
+                        parts: [
+                            { file_data: { mime_type: "video/*", file_uri: url } },
+                            { text: prompt }
+                        ]
+                    }],
+                    generationConfig: { temperature: 0.7, maxOutputTokens: 8192, responseMimeType: 'text/plain' }
+                });
+
+                if (audioManager.players.get(transcribingPlayerId)?.isPlaying) {
+                    audioManager.togglePlayPause(transcribingPlayerId);
+                }
+
+                const content = response.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (!content) throw new Error('No transcription received from API.');
+
+                // Split content into Transcription and Overview sections
+                const sections = content.split('## Overview');
+                const transcriptionText = sections[0].replace('## Transcription', '').trim();
+                const overviewText = sections[1] ? sections[1].trim() : '';
+
+                const transcriptionElement = document.getElementById(`transcriptionresponse-${transcriptionId}`);
+                const overviewElement = document.getElementById(`overviewresponse-${transcriptionId}`);
+                if (!transcriptionElement || !overviewElement) {
+                    throw new Error('Transcription or overview element not found in DOM');
+                }
+                transcriptionElement.innerHTML = marked.parse(transcriptionText);
+                transcriptionElement.classList.remove('loading');
+                overviewElement.innerHTML = marked.parse(overviewText);
+                overviewElement.classList.remove('loading');
+
+                transcriptionElement.insertAdjacentHTML('afterend', `
+                    <button class="collapsible" aria-expanded="false" aria-controls="transcription-actions-${transcriptionId}" role="button">Transcription Actions</button>
+                    <div id="transcription-actions-${transcriptionId}" class="collapsible-content">
+                        <div class="action-buttons">
+                            <ul>
+                                <li><button class="copy-btn action-btn" data-clipboard-target="#transcriptionresponse-${transcriptionId}">Copy Transcription</button></li>
+                                <li><button id="play-btn-transcription-${transcriptionId}" class="action-btn" data-response-id="transcriptionresponse-${transcriptionId}" onclick="playResponse('transcriptionresponse-${transcriptionId}', 'play-btn-transcription-${transcriptionId}')">Play Transcription</button></li>
+                                <li><button class="action-btn" onclick="downloadText('transcriptionresponse-${transcriptionId}')">Download Transcription</button></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <button class="action-btn" onclick="transcribeAnother('${transcriptionId}')">Transcribe Another</button>
+                `);
+
+                initializeCollapsible();
+                new ClipboardJS(`#transcription-actions-${transcriptionId} .copy-btn`).on('success', handleCopySuccess).on('error', handleCopyError);
+                showToast('Transcription generated successfully.', 'success');
+            } catch (error) {
+                console.error('Transcription error:', error);
+                if (audioManager.players.get(transcribingPlayerId)?.isPlaying) {
+                    audioManager.togglePlayPause(transcribingPlayerId);
+                }
+                showToast(`Error processing video: ${error.message}`, 'error');
+                document.getElementById(transcriptionId)?.remove();
+            } finally {
+                DOM.transcribeBtn.disabled = false;
+                showLoading(false);
+            }
+        }
+
+        // Transcribe Another (Reset Everything)
+        function transcribeAnother(transcriptionId) {
+            const element = document.getElementById(transcriptionId);
+            if (element) {
+                if (audioManager.players.get(`play-btn-transcription-${transcriptionId}`)?.isPlaying) {
+                    audioManager.togglePlayPause(`play-btn-transcription-${transcriptionId}`);
+                    audioManager.players.delete(`play-btn-transcription-${transcriptionId}`);
+                }
+                element.remove();
+            }
+            DOM.youtubeUrl.value = '';
+            showToast('Ready to transcribe another video.', 'info');
+        }
+
+        // Play Response Audio
+        async function playResponse(elementId, buttonId) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            const text = element.textContent;
+            const langCode = languageCodeMap[selectedLang] || 'en';
+            audioManager.createSpeech(text, langCode, buttonId);
+        }
+
+        // Download Text
+        function downloadText(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${elementId}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Text downloaded successfully.', 'success');
+        }
+
+        // Clipboard Success Handler
+        function handleCopySuccess(e) {
+            const btn = e.trigger;
+            btn.textContent = 'Copied Transcription';
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.textContent = 'Copy Transcription';
+                btn.classList.remove('copied');
+            }, 3000);
+            showToast('Text copied to clipboard!', 'success');
+            e.clearSelection();
+        }
+
+        // Clipboard Error Handler
+        function handleCopyError() {
+            showToast('Failed to copy text. Please try again.', 'error');
+        }
+
+        // Initialize on Page Load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!DOM.transcribeBtn) {
+                console.error('Transcribe button not found in DOM');
+                return;
+            }
+            DOM.transcribeBtn.removeEventListener('click', transcribeVideo);
+            DOM.transcribeBtn.addEventListener('click', transcribeVideo);
+            initializeCollapsible();
+            loadSettings();
+        });
+    </script>
+</body>
+</html>
